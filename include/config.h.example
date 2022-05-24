@@ -1,0 +1,11 @@
+/*Use this file as example to make your own config.h file with your actual credentials
+  CAUTION do not upload config.h file to your cloud repository (github, gitlab, etc)
+*/
+#ifndef config_h
+#define config_h
+
+char ssid[] = "NETWORK_SSID";         // your network SSID (name)
+char password[] = "PASSWORD"; // your network password
+#define TELEGRAM_BOT_TOKEN "xxxxxxxxxx:xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
+
+#endif

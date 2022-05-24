@@ -1,73 +1,121 @@
-#include "Arduino.h"
 #include <ESP8266WiFi.h>
 #include <WiFiClientSecure.h>
 #include <UniversalTelegramBot.h>
+#include <ArduinoJson.h>
+#include <config.h> //credentials
 
-// Wifi network station credentials
-#define WIFI_SSID "Hack1"
-#define WIFI_PASSWORD "Camind2021"
-#define BOT_TOKEN "5392761242:AAHzLHPQBLbOSk7PwzPbCiq3jUY4vL1IdAY"
-const unsigned long BOT_MTBS = 1000; // mean time between scan messages
+const int Trigger = D0;
+const int Echo = D1;
+//------- ---------------------- ------
 
-X509List cert(TELEGRAM_CERTIFICATE_ROOT);
-WiFiClientSecure secured_client;
-UniversalTelegramBot bot(BOT_TOKEN, secured_client);
-unsigned long bot_lasttime; // last time messages' scan has been done
+WiFiClientSecure client;
+UniversalTelegramBot bot(TELEGRAM_BOT_TOKEN, client);
 
-void handleNewMessages(int numNewMessages)
-{
-  for (int i = 0; i < numNewMessages; i++)
-  {
-    bot.sendMessage(bot.messages[i].chat_id, bot.messages[i].text, "");
-  }
-}
+int delayBetweenChecks = 1000;
+unsigned long lastTimeChecked;
+unsigned long lightTimerExpires;
+boolean lightTimerActive = false;
 
-void setup()
-{
+void setup() {
   Serial.begin(115200);
-  Serial.println();
-
-  // attempt to connect to Wifi network:
-  Serial.print("Connecting to Wifi SSID ");
-  Serial.print(WIFI_SSID);
-  WiFi.begin(WIFI_SSID, WIFI_PASSWORD);
-  secured_client.setTrustAnchors(&cert); // Add root certificate for api.telegram.org
-
-  while (WiFi.status() != WL_CONNECTED)
-  {
+  WiFi.mode(WIFI_STA);
+  WiFi.disconnect();
+  delay(100);
+  Serial.print("Connecting Wifi: ");
+  Serial.println(ssid);
+  WiFi.begin(ssid, password);
+  while (WiFi.status() != WL_CONNECTED) {
     Serial.print(".");
     delay(500);
   }
-  Serial.print("\nWiFi connected. IP address: ");
+  Serial.println("");
+  Serial.println("WiFi connected");
+  Serial.print("IP address: ");
   Serial.println(WiFi.localIP());
-
-  Serial.print("Retrieving time: ");
-  configTime(0, 0, "pool.ntp.org"); // get UTC time via NTP
-  time_t now = time(nullptr);
-  while (now < 24 * 3600)
-  {
-    Serial.print(".");
-    delay(100);
-    now = time(nullptr);
-  }
-  Serial.println(now);
+  client.setInsecure();
+  //bot.longPoll = 60;
+  pinMode(Trigger, OUTPUT);
+  pinMode(Echo, INPUT);
+  digitalWrite(Trigger, LOW);
 }
 
-void loop()
-{
-  if (millis() - bot_lasttime > BOT_MTBS)
-  {
-    int numNewMessages = bot.getUpdates(bot.last_message_received + 1);
+void handleNewMessages(int numNewMessages) {
+  for (int i = 0; i < numNewMessages; i++) {
+    if (bot.messages[i].type ==  F("callback_query")) {
+      String text = bot.messages[i].text;
+      Serial.print("Call back button pressed with text: ");
+      Serial.println(text);
+      if (text == F("ON")) {
+        String chat_id = String(bot.messages[i].chat_id);
+        String text = bot.messages[i].text;
+        long t;
+        long d;
+        digitalWrite(Trigger, HIGH);
+        delayMicroseconds(10);
+        digitalWrite(Trigger, LOW);
+        t = pulseIn(Echo, HIGH);
+        d = t/59;
+        Serial.print("Distancia: ");
+        Serial.print(d);
+        Serial.print("cm");
+        Serial.println();
+        delay(100);
+        String y= String(d);
+        bot.sendMessage(chat_id, "EL **NIVEL DEL AGUA** ESTA A : "+y+" cm", "Markdown");
+        if(d>20){
+          bot.sendMessage(chat_id, "ESTA DENTRO EL RANGO DE LA **NORMALIDAD**", "Markdown");
+        }else if(d<=19, d>=15){
+            bot.sendMessage(chat_id, "ESTA DENTRO EL RANGO DE NIVEL **ANORMAL** CON TENDENCIA A RIESGO", "Markdown");
+          }else if(d<=14, d>=10){
+            bot.sendMessage(chat_id, "ESTA DENTRO EL RANGO DE NIVEL DE **RIESGO**, SE SOLICITA EVACUAR ZONAS DENTRO EL AREA 1", "Markdown");
+          }else if(d<=9, d>=2){
+            bot.sendMessage(chat_id, "ESTA DENTRO EL RANGO DE **DESBORDE**, SE SOLICITA EVACUAR ZONAS DENTRO DEL AREA 1 Y 2 ", "Markdown");
+          }
+        String keyboardButton = F("[[{ \"text\" : \"VER REPORTE JICHISAT\", \"callback_data\" : \"ON\" }]]");
+        bot.sendMessageWithInlineKeyboard(chat_id, "JICHISAT ALERTA TEMPRANA - INUNDACIONES Y DESBORDES DE RIOS, ESTE PROTOTIPO SOLO SIRVE PARA VERIFICAR LA RECOPILACION DE DATOS EN TIEMPO REAL", "", keyboardButton);
+      }
+    }
+    else {
+      String chat_id = String(bot.messages[i].chat_id);
+      String text = bot.messages[i].text;
+      if (text == F("/start")) {
+       String keyboardButton = F("[[{ \"text\" : \"VER REPORTE JICHISAT\", \"callback_data\" : \"ON\" }]]");
+        bot.sendMessageWithInlineKeyboard(chat_id, "JICHISAT ES UNA ALERTA TEMPRANA ANTE INUNDACIONES Y DESBORDES DE RIOS, ESTE PROTOTIPO SOLO SIRVE PARA VERIFICAR LA RECOPILACION DE DATOS EN TIEMPO REAL", "", keyboardButton);
+      }
+     }
+   }
+  }
+void loop() {
+  volatile long t;
+  volatile long d;
 
-    while (numNewMessages)
-    {
+  if (millis() > lastTimeChecked + delayBetweenChecks)  {
+    int numNewMessages = bot.getUpdates(bot.last_message_received + 1);
+    if (numNewMessages) {
       Serial.println("got response");
       handleNewMessages(numNewMessages);
-      numNewMessages = bot.getUpdates(bot.last_message_received + 1);
+    }
+    lastTimeChecked = millis();
+    if (lightTimerActive && millis() > lightTimerExpires) {
+      lightTimerActive = false;
     }
 
-    bot_lasttime = millis();
+    digitalWrite(Trigger, HIGH);
+    delayMicroseconds(10);
+    digitalWrite(Trigger, LOW);
+    t = pulseIn(Echo, HIGH);
+    d = t/59;
+    if (d < 15){
+      Serial.print("Distancia: ");
+      Serial.print(d);
+      Serial.print("cm");
+      Serial.println();
+      String y= String(d);
+      bot.sendMessage("642475044", "EL **NIVEL DEL AGUA** ESTA A : "+y+" cm", "Markdown");
+      bot.sendMessage("642475044", "ESTA DENTRO EL RANGO DE **DESBORDE**, SE SOLICITA EVACUAR ZONAS DENTRO DEL AREA 1 Y 2 ", "Markdown");
+    }
+    //delay(100);
   }
+
 }
-
-
+//642475044 uska id
