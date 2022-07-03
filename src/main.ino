@@ -4,6 +4,8 @@
 #include <ArduinoJson.h>
 #include <config.h> //credentials
 
+#include "ISensor.h"
+
 const int Trigger = D0;
 const int Echo = D1;
 //------- ---------------------- ------
