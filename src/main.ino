@@ -5,6 +5,7 @@
 #include <config.h> //credentials
 
 #include "ISensor.h"
+#include "IComunication.h"
 
 const int Trigger = D0;
 const int Echo = D1;
