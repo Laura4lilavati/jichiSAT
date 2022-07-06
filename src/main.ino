@@ -6,6 +6,7 @@
 
 #include "ISensor.h"
 #include "IComunication.h"
+#include "UltrasonicHCSR04.hpp"
 
 const int Trigger = D0;
 const int Echo = D1;
@@ -13,6 +14,8 @@ const int Echo = D1;
 
 WiFiClientSecure client;
 UniversalTelegramBot bot(TELEGRAM_BOT_TOKEN, client);
+
+UltrasonicHCSR04 ultrasonic(Trigger, Echo);
 
 int delayBetweenChecks = 1000;
 unsigned long lastTimeChecked;
@@ -37,9 +40,9 @@ void setup() {
   Serial.println(WiFi.localIP());
   client.setInsecure();
   //bot.longPoll = 60;
-  pinMode(Trigger, OUTPUT);
+  /*pinMode(Trigger, OUTPUT);
   pinMode(Echo, INPUT);
-  digitalWrite(Trigger, LOW);
+  digitalWrite(Trigger, LOW);*/
 }
 
 void handleNewMessages(int numNewMessages) {
@@ -51,13 +54,15 @@ void handleNewMessages(int numNewMessages) {
       if (text == F("ON")) {
         String chat_id = String(bot.messages[i].chat_id);
         String text = bot.messages[i].text;
-        long t;
-        long d;
+        volatile long d;
+        /*long t;
         digitalWrite(Trigger, HIGH);
         delayMicroseconds(10);
         digitalWrite(Trigger, LOW);
         t = pulseIn(Echo, HIGH);
-        d = t/59;
+        d = t/59;*/
+        ultrasonic.readSensorData();
+        d = ultrasonic.sensorData.distance;
         Serial.print("Distancia: ");
         Serial.print(d);
         Serial.print("cm");
@@ -89,7 +94,7 @@ void handleNewMessages(int numNewMessages) {
    }
   }
 void loop() {
-  volatile long t;
+  //volatile long t;
   volatile long d;
 
   if (millis() > lastTimeChecked + delayBetweenChecks)  {
@@ -103,11 +108,13 @@ void loop() {
       lightTimerActive = false;
     }
 
-    digitalWrite(Trigger, HIGH);
+    /*digitalWrite(Trigger, HIGH);
     delayMicroseconds(10);
     digitalWrite(Trigger, LOW);
     t = pulseIn(Echo, HIGH);
-    d = t/59;
+    d = t/59;*/
+    ultrasonic.readSensorData();
+    d = ultrasonic.sensorData.distance;
     if (d < 15){
       Serial.print("Distancia: ");
       Serial.print(d);
