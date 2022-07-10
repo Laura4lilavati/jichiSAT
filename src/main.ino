@@ -7,6 +7,7 @@
 #include "ISensor.h"
 #include "IComunication.h"
 #include "UltrasonicHCSR04.hpp"
+#include "wifiComunication.hpp"
 
 const int Trigger = D0;
 const int Echo = D1;
@@ -16,6 +17,7 @@ WiFiClientSecure client;
 UniversalTelegramBot bot(TELEGRAM_BOT_TOKEN, client);
 
 UltrasonicHCSR04 ultrasonic(Trigger, Echo);
+wifiComunication myWifiCom("nodeESP01");
 
 int delayBetweenChecks = 1000;
 unsigned long lastTimeChecked;
@@ -43,6 +45,7 @@ void setup() {
   /*pinMode(Trigger, OUTPUT);
   pinMode(Echo, INPUT);
   digitalWrite(Trigger, LOW);*/
+  wifiComunication::setCallback(myWifiCom);
 }
 
 void handleNewMessages(int numNewMessages) {

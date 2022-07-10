@@ -1,7 +1,6 @@
 #pragma once
 #include "Arduino.h"
 #include "ISensor.h"
-#include "UltrasonicHCSR04.hpp"
 
 struct SensorData {
   long distance;
