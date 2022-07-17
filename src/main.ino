@@ -45,7 +45,7 @@ void setup() {
   /*pinMode(Trigger, OUTPUT);
   pinMode(Echo, INPUT);
   digitalWrite(Trigger, LOW);*/
-  wifiComunication::setCallback(myWifiCom);
+  //wifiComunication::setCallback(myWifiCom);
 }
 
 void handleNewMessages(int numNewMessages) {

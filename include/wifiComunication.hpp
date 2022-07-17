@@ -26,19 +26,23 @@ public:
     }
   }
 
-   void sendData (int* jsonData) override {
+  void sendData (int* jsonData) override {
     myMqttClient.publish("myTopic", "hola mundo");
   }
 
-/*  static void setCallback(wifiComunication& wCom){
-    wCom.myMqttClient.setCallback(wCom.&callback);
+  static void setCallback(wifiComunication* wCom){
+    auto callback = [&wCom] (char* topic, byte* payload, unsigned int length) {
+      int a = 77;
+      wCom->myData = &a;
+    };
+    wCom->myMqttClient.setCallback(callback);
   }
-*/
-  virtual int* receiveData() override {
+
+  int* receiveData() override {
     return myData;
   }
 
-  void callback (char* topic, byte* payload, unsigned int length)
+  void callback1 (char* topic, byte* payload, unsigned int length)
   {
     Serial.print ("Message arrived [");
     Serial.print (topic);
@@ -57,7 +61,6 @@ public:
     } else {
       digitalWrite (LED_BUILTIN, HIGH); // Turn the LED off by making the voltage HIGH
     }
-    *myData = 77;
   }
 
   wifiComunication (const char* clientID): mqttClientID(clientID){
@@ -72,7 +75,7 @@ public:
     }
     Serial.println(F("CONNECTED"));
     myMqttClient.setServer (mqtt_server, 1883);
-    myMqttClient.setCallback(this::callback);
+    wifiComunication::setCallback(this); //passing the actual instance
   };
 
 private:
