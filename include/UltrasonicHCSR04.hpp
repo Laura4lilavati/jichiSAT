@@ -16,7 +16,7 @@ public:
     pinMode(echo, INPUT);
     digitalWrite(trigger, LOW);
   }
-  SensorData sensorData;
+  SensorData sensorData; //move this to a public section
   void readSensorData () override { //inline method
     digitalWrite(m_trigger, HIGH);
     delayMicroseconds(10);

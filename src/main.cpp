@@ -1,53 +1,43 @@
-#include <ESP8266WiFi.h>
-#include <WiFiClientSecure.h>
-#include <UniversalTelegramBot.h>
+#include <Arduino.h>
 #include <ArduinoJson.h>
-#include <config.h> //credentials
+#include <ESP8266WiFi.h>
+//#include "config.h" //ssid, password, mqtt server and other credentials
 
-#include "ISensor.h"
-#include "IComunication.h"
+//#include "ISensor.h"
+//#include "IComunication.h"
 #include "UltrasonicHCSR04.hpp"
-#include "wifiComunication.hpp"
+#include "WifiComunication.hpp"
+#include "MqttProtocol.hpp"
 
 const int Trigger = D0;
 const int Echo = D1;
 //------- ---------------------- ------
 
-WiFiClientSecure client;
-UniversalTelegramBot bot(TELEGRAM_BOT_TOKEN, client);
-
+WiFiClient myWifiClient;
 UltrasonicHCSR04 ultrasonic(Trigger, Echo);
-wifiComunication myWifiCom("nodeESP01");
+WifiComunication myWifiComunication;
+MqttProtocol myMqttClient("esp8266_01", &myWifiComunication, myWifiClient);
 
 int delayBetweenChecks = 1000;
 unsigned long lastTimeChecked;
 unsigned long lightTimerExpires;
 boolean lightTimerActive = false;
 
-void setup() {
-  Serial.begin(115200);
-  WiFi.mode(WIFI_STA);
-  WiFi.disconnect();
-  delay(100);
-  Serial.print("Connecting Wifi: ");
-  Serial.println(ssid);
-  WiFi.begin(ssid, password);
-  while (WiFi.status() != WL_CONNECTED) {
-    Serial.print(".");
-    delay(500);
-  }
-  Serial.println("");
-  Serial.println("WiFi connected");
-  Serial.print("IP address: ");
-  Serial.println(WiFi.localIP());
-  client.setInsecure();
-  //bot.longPoll = 60;
-  /*pinMode(Trigger, OUTPUT);
-  pinMode(Echo, INPUT);
-  digitalWrite(Trigger, LOW);*/
-  //wifiComunication::setCallback(myWifiCom);
+void callback(char* topic, byte* payload, unsigned int length) {
+  //do something when mqtt messages arrive
 }
 
+void setup() {
+  myWifiComunication.setup();
+  myMqttClient.setup(callback);
+  if (myMqttClient.reconnect()) {
+    myMqttClient.sendMessage("prueba de data json 4");
+  }else{
+    //save to fileSystem, circular buffer littleFS
+  }
+  //Go to sleep for SLEEPTIME minutes
+}
+/*
 void handleNewMessages(int numNewMessages) {
   for (int i = 0; i < numNewMessages; i++) {
     if (bot.messages[i].type ==  F("callback_query")) {
@@ -58,12 +48,12 @@ void handleNewMessages(int numNewMessages) {
         String chat_id = String(bot.messages[i].chat_id);
         String text = bot.messages[i].text;
         volatile long d;
-        /*long t;
+        long t;
         digitalWrite(Trigger, HIGH);
         delayMicroseconds(10);
         digitalWrite(Trigger, LOW);
         t = pulseIn(Echo, HIGH);
-        d = t/59;*/
+        d = t/59;
         ultrasonic.readSensorData();
         d = ultrasonic.sensorData.distance;
         Serial.print("Distancia: ");
@@ -96,39 +86,28 @@ void handleNewMessages(int numNewMessages) {
      }
    }
   }
+*/
 void loop() {
-  //volatile long t;
   volatile long d;
+  int numNewMessages = 1;
 
   if (millis() > lastTimeChecked + delayBetweenChecks)  {
-    int numNewMessages = bot.getUpdates(bot.last_message_received + 1);
     if (numNewMessages) {
       Serial.println("got response");
-      handleNewMessages(numNewMessages);
     }
     lastTimeChecked = millis();
     if (lightTimerActive && millis() > lightTimerExpires) {
       lightTimerActive = false;
     }
 
-    /*digitalWrite(Trigger, HIGH);
-    delayMicroseconds(10);
-    digitalWrite(Trigger, LOW);
-    t = pulseIn(Echo, HIGH);
-    d = t/59;*/
     ultrasonic.readSensorData();
     d = ultrasonic.sensorData.distance;
     if (d < 15){
+      myMqttClient.sendMessage("hola mundo");
       Serial.print("Distancia: ");
       Serial.print(d);
       Serial.print("cm");
       Serial.println();
-      String y= String(d);
-      bot.sendMessage("642475044", "EL **NIVEL DEL AGUA** ESTA A : "+y+" cm", "Markdown");
-      bot.sendMessage("642475044", "ESTA DENTRO EL RANGO DE **DESBORDE**, SE SOLICITA EVACUAR ZONAS DENTRO DEL AREA 1 Y 2 ", "Markdown");
     }
-    //delay(100);
   }
-
 }
-//642475044 uska id
