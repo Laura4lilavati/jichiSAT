@@ -3,11 +3,12 @@
 #include "PubSubClient.h"
 #include "config.h" //ssid, password, mqtt server and other credentials
 #include "IComunication.h"
+#include "IProtocol.h"
 
 #define retryNumber 4
 
 template<typename T>
-class MqttProtocol
+class MqttProtocol : public IProtocol
 {
 public:
   const char* _mqttClientId;
